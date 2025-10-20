@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logo Exporter — PNG/WebP</title>
+  <style>
+    body{font:14px/1.6 system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans JP', sans-serif; margin:24px; color:#1b2430}
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    button{padding:10px 14px; border-radius:10px; border:1px solid #d0d7e0; background:#f6f8fb; cursor:pointer}
+    button:disabled{opacity:.5; cursor:not-allowed}
+    .log{margin-top:14px; padding:10px; background:#f3f6ff; border:1px solid #dae4ff; border-radius:8px; min-height:44px; white-space:pre-wrap}
+    code{background:#f1f3f6; padding:2px 6px; border-radius:6px}
+  </style>
+  <script>
+    async function loadSVG() {
+      const res = await fetch('../assets/img/logo.svg', { cache: 'no-cache' });
+      if (!res.ok) throw new Error('logo.svg の取得に失敗しました');
+      return await res.text();
+    }
+
+    function svgToDataUrl(svgText){
+      const blob = new Blob([svgText], { type: 'image/svg+xml' });
+      return URL.createObjectURL(blob);
+    }
+
+    function drawToCanvas(url, size){
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = size; c.height = size;
+          const ctx = c.getContext('2d');
+          ctx.clearRect(0,0,size,size);
+          // Center-fit: keep square aspect
+          ctx.drawImage(img, 0, 0, size, size);
+          resolve(c);
+        };
+        img.onerror = () => reject(new Error('SVGの描画に失敗しました'));
+        img.src = url;
+      });
+    }
+
+    async function canvasToBlob(canvas, type, quality){
+      return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+    }
+
+    async function saveWithFS(dirHandle, filename, blob){
+      const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob); await writable.close();
+    }
+
+    function downloadFallback(filename, blob){
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    }
+
+    async function exportAll(){
+      const log = (msg) => document.querySelector('.log').textContent += msg + '\n';
+      document.querySelector('#export').disabled = true;
+      document.querySelector('.log').textContent = '';
+      try{
+        log('SVG読み込み中…');
+        const svg = await loadSVG();
+        const url = svgToDataUrl(svg);
+
+        const sizes = [256, 512];
+        const outputs = [];
+        for (const s of sizes){
+          log(`レンダリング: ${s}x${s}`);
+          const canvas = await drawToCanvas(url, s);
+          const png = await canvasToBlob(canvas, 'image/png');
+          const webp = await canvasToBlob(canvas, 'image/webp', 0.92);
+          outputs.push({ name:`logo-${s}.png`, blob: png });
+          outputs.push({ name:`logo-${s}.webp`, blob: webp });
+        }
+
+        let dirHandle = null;
+        if ('showDirectoryPicker' in window){
+          log('保存先フォルダを選択してください（assets/img を推奨）…');
+          try{ dirHandle = await window.showDirectoryPicker(); }catch(e){ log('フォルダ選択がキャンセルされました。ダウンロードに切替えます。'); }
+        }
+
+        for (const out of outputs){
+          if (dirHandle){
+            await saveWithFS(dirHandle, out.name, out.blob);
+            log(`保存: ${out.name}`);
+          } else {
+            downloadFallback(out.name, out.blob);
+            log(`ダウンロード: ${out.name}`);
+          }
+        }
+        log('完了');
+      }catch(err){
+        document.querySelector('.log').textContent = 'エラー: ' + (err?.message || err);
+      }finally{
+        document.querySelector('#export').disabled = false;
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      document.querySelector('#export').addEventListener('click', exportAll);
+    });
+  </script>
+  </head>
+  <body>
+    <h1>Logo Exporter</h1>
+    <p>SVGロゴ（<code>assets/img/logo.svg</code>）を 256px/512px の PNG と WebP に書き出します。</p>
+    <ol>
+      <li>「エクスポート」を押す</li>
+      <li>ダイアログが出たら <strong>assets/img</strong> フォルダを選択（Edge/Chrome 推奨）</li>
+      <li>完了後、<code>assets/img/logo-256.png</code> 等が生成されます</li>
+    </ol>
+    <div class="row">
+      <button id="export">エクスポート（PNG/WebP 256・512）</button>
+    </div>
+    <div class="log" aria-live="polite"></div>
+  </body>
+</html>
+

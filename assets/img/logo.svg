@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Aoki Design Studio">
+  <title>Aoki Design Studio Monogram</title>
+  <desc>Two-tone gradient stroke for better contrast on dark background.</desc>
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5C8EE5"/>
+      <stop offset="1" stop-color="#4B77BE"/>
+    </linearGradient>
+  </defs>
+  <!-- Monogram A: gradient stroke with rounded joins/caps -->
+  <g fill="none" stroke="url(#brand)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left leg -->
+    <path d="M128 40 L64 216"/>
+    <!-- Right leg -->
+    <path d="M128 40 L192 216"/>
+    <!-- Bottom right short segment (creates the characteristic open base) -->
+    <path d="M156 216 L192 216"/>
+    <!-- Crossbar -->
+    <path d="M104 144 H164"/>
+  </g>
+</svg>
